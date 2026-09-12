@@ -20,15 +20,20 @@ site_visit/
 └── site_visit/
     ├── __init__.py           # Versionsnummer
     ├── hooks.py              # doctype_js + doc_events
-    ├── site_visit.py         # before_submit/on_cancel: Zeitblatt-Logik
+    ├── site_visit.py         # before_submit/on_cancel/check_app_permission
     ├── modules.txt           # Modulname "Site Visit"
     ├── patches.txt
-    ├── public/js/
-    │   └── site_visit.js     # Feld-Defaults, Link zum Zeitblatt nach dem Buchen
+    ├── public/
+    │   ├── js/site_visit.js       # Feld-Defaults, Auftragsfilter, Link zum Zeitblatt
+    │   └── images/site_visit-logo.svg
     └── site_visit/           # Modulordner
-        └── doctype/
-            ├── site_visit/          # Haupt-Doctype (submittable)
-            └── site_visit_photo/    # Kindtabelle für Fotos
+        ├── doctype/
+        │   ├── site_visit/          # Haupt-Doctype (submittable)
+        │   └── site_visit_photo/    # Kindtabelle für Fotos
+        ├── print_format/
+        │   └── site_visit_report/   # PDF-Vorlage
+        └── workspace/
+            └── site_visit/          # Desk-Seite der App
 ```
 
 Kein `install.py`: Es gibt keine Custom Fields auf Kern-Doctypes und keine
@@ -108,6 +113,34 @@ bench --site <deine-site> uninstall-app site_visit
   Timesheet direkt in deren "Zeiten aus Zeiterfassung importieren"-Dialog
   auf der Ausgangsrechnung auf — keine zusätzliche Konfiguration nötig, nur
   lose Kopplung über die Kern-Doctype "Activity Type".
+
+## Eigene App im Desk
+
+Die App bringt ein eigenes Logo mit (`public/images/site_visit-logo.svg`) und
+registriert sich über `add_to_apps_screen`/`app_logo_url` in `hooks.py` als
+eigene Kachel auf der Apps-Übersicht (`/apps`), inklusive einer eigenen
+Workspace mit Verknüpfungen zu "Site Visit" und "Timesheet".
+
+## Automatische PDF-Erzeugung beim Buchen
+
+Die App liefert ein eigenes, gestaltetes Print Format **"Site Visit Report"**
+mit (Kopfbereich, Kundendaten, Fotogalerie, Unterschriftsblock) und setzt es
+als Standard-Druckformat für "Site Visit". Das alleine erzeugt aber noch
+keine automatische PDF-Anlage beim Buchen — dafür braucht es einen
+PDF-Automatisierungsmechanismus wie die App
+[`pdf_on_submit`](https://github.com/alyf-de/erpnext_pdf-on-submit) (bewusst
+keine harte Abhängigkeit, `site_visit` funktioniert auch ohne).
+
+Ist `pdf_on_submit` installiert, einmalig einrichten:
+
+1. **PDF on Submit Settings** öffnen
+2. Zeile in *Enabled For* hinzufügen: Document Type `Site Visit`,
+   Print Format `Site Visit Report`
+3. Speichern — ab dann wird bei jedem gebuchten Site Visit automatisch ein
+   PDF erzeugt und angehängt
+
+Ohne `pdf_on_submit` (oder eine ähnliche App) bleibt das Print Format
+manuell nutzbar (Drucken/PDF-Button im Formular), nur eben nicht automatisch.
 
 ## Berechtigungen
 

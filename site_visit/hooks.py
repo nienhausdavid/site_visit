@@ -8,6 +8,21 @@ app_license = "mit"
 required_apps = ["frappe/erpnext"]
 
 # ---------------------------------------------------------------------------
+# Eigene App im Desk (Apps-Uebersicht + Logo oben links innerhalb der App)
+# ---------------------------------------------------------------------------
+app_logo_url = "/assets/site_visit/images/site_visit-logo.svg"
+
+add_to_apps_screen = [
+	{
+		"name": "site_visit",
+		"logo": "/assets/site_visit/images/site_visit-logo.svg",
+		"title": "Site Visit",
+		"route": "/app/site-visit",
+		"has_permission": "site_visit.site_visit.site_visit.check_app_permission",
+	}
+]
+
+# ---------------------------------------------------------------------------
 # Formular-Skript
 #
 # Als Datei ausgeliefert statt als Client-Script-Datensatz - verschwindet
