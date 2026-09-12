@@ -50,6 +50,22 @@ doc_events = {
 	},
 }
 
+# ---------------------------------------------------------------------------
+# PDF-Generator fuer Site Visit auf "chrome" erzwingen
+#
+# frappe.utils.print_format.download_pdf ignoriert das pdf_generator-Feld
+# des Print Format komplett und faellt hart auf "wkhtmltopdf" zurueck - das
+# eigentliche Ausleseglied dafuer liefert normalerweise die App
+# print_designer (before_request-Hook), die auf diesem Server aber bewusst
+# nicht installiert ist (kein version-16-Branch, Stabilitaetsbedenken laut
+# INSTALL-APPS.md). Der Standard-Generator scheitert bei Site Visit an
+# einem eingebetteten Base64-Bild (Kundenunterschrift) mit
+# "ContentOperationNotPermittedError" - ein bekanntes wkhtmltopdf-Problem.
+# Statt der riskanten App nur den kleinen, konkret benoetigten Teil
+# selbst nachbauen, beschraenkt auf Site Visit.
+# ---------------------------------------------------------------------------
+before_request = ["site_visit.site_visit.site_visit.force_chrome_pdf"]
+
 # Kein after_install/before_uninstall: keine Custom Fields auf Kern-Doctypes,
 # keine sonstigen Datensaetze, die manuell aufgeraeumt werden muessten. Alles
 # Neue gehoert zum Modul "Site Visit" und wird von uninstall-app dadurch

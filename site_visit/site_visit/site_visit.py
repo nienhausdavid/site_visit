@@ -77,3 +77,22 @@ def check_app_permission():
 		return True
 	roles = frappe.get_roles()
 	return any(role in roles for role in ("System Manager", "Projects Manager", "Employee"))
+
+
+def force_chrome_pdf():
+	"""Vor download_pdf/printview: erzwingt pdf_generator=chrome fuer Site
+	Visit. Normalerweise liest die App print_designer das pdf_generator-Feld
+	des Print Format aus und setzt es genau so vor dem eigentlichen Request -
+	print_designer ist auf diesem Server aber bewusst nicht installiert
+	(siehe hooks.py). Ohne diesen Hook faellt download_pdf hart auf
+	wkhtmltopdf zurueck, das an einem eingebetteten Base64-Bild (der
+	Kundenunterschrift) mit "ContentOperationNotPermittedError" scheitert."""
+	request = getattr(frappe.local, "request", None)
+	if not request or request.path not in (
+		"/api/method/frappe.utils.print_format.download_pdf",
+		"/printview",
+	):
+		return
+	if frappe.request.args.get("doctype") != "Site Visit":
+		return
+	frappe.local.form_dict.pdf_generator = "chrome"
