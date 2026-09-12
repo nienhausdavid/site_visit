@@ -1,0 +1,2 @@
+# Patches added in this section will be executed after your app is installed
+# Read this for more info: https://frappeframework.com/docs/v14/user/en/database-migrations
