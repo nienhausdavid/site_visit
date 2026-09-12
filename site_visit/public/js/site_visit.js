@@ -21,25 +21,18 @@ frappe.ui.form.on('Site Visit', {
 				});
 		}
 		if (!frm.doc.from_time) frm.set_value('from_time', frappe.datetime.now_datetime());
+
+		// Ueber die Verknuepfungen-Liste des Projekts angelegt ("+" bei Site
+		// Visit): project ist dann schon vorbelegt, aber das Feldevent
+		// project() unten feuert dabei nicht (Frappe setzt route_options beim
+		// Neuanlegen direkt als Feldwert, nicht ueber set_value). Deshalb hier
+		// dieselbe Logik einmal explizit anstossen.
+		if (frm.doc.project) fill_from_project(frm);
 	},
 
 	project(frm) {
 		if (!frm.doc.project) return;
-		if (!frm.doc.customer) {
-			frappe.db.get_value('Project', frm.doc.project, 'customer').then((r) => {
-				if (r.message && r.message.customer) frm.set_value('customer', r.message.customer);
-			});
-		}
-		// Genau ein passender Auftrag zum gewaehlten Projekt? Dann gleich
-		// uebernehmen. Bei mehreren zeigt der Filter aus onload() nur noch die
-		// passenden im Dropdown - der Techniker waehlt dann selbst.
-		frappe.db.get_list('Sales Order', {
-			filters: { project: frm.doc.project, docstatus: ['!=', 2] },
-			fields: ['name'],
-			limit: 2,
-		}).then((rows) => {
-			if (rows.length === 1) frm.set_value('sales_order', rows[0].name);
-		});
+		fill_from_project(frm);
 	},
 
 	sales_order(frm) {
@@ -66,3 +59,23 @@ frappe.ui.form.on('Site Visit', {
 		}
 	},
 });
+
+function fill_from_project(frm) {
+	if (!frm.doc.customer) {
+		frappe.db.get_value('Project', frm.doc.project, 'customer').then((r) => {
+			if (r.message && r.message.customer) frm.set_value('customer', r.message.customer);
+		});
+	}
+	// Genau ein passender Auftrag zum gewaehlten Projekt? Dann gleich
+	// uebernehmen. Bei mehreren zeigt der Filter aus onload() nur noch die
+	// passenden im Dropdown - der Techniker waehlt dann selbst.
+	if (!frm.doc.sales_order) {
+		frappe.db.get_list('Sales Order', {
+			filters: { project: frm.doc.project, docstatus: ['!=', 2] },
+			fields: ['name'],
+			limit: 2,
+		}).then((rows) => {
+			if (rows.length === 1) frm.set_value('sales_order', rows[0].name);
+		});
+	}
+}

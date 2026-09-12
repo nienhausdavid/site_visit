@@ -74,6 +74,16 @@ doc_events = {
 # ---------------------------------------------------------------------------
 before_request = ["site_visit.site_visit.site_visit.force_chrome_pdf"]
 
+# ---------------------------------------------------------------------------
+# Site Visit in der Verknuepfungen-Liste des Projekt-Formulars
+#
+# Additiv (siehe project_dashboard.get_data) - ergaenzt nur einen Eintrag,
+# ersetzt nicht die von ERPNext gelieferte Liste.
+# ---------------------------------------------------------------------------
+override_doctype_dashboards = {
+	"Project": "site_visit.site_visit.project_dashboard.get_data",
+}
+
 # Kein after_install/before_uninstall: keine Custom Fields auf Kern-Doctypes,
 # keine sonstigen Datensaetze, die manuell aufgeraeumt werden muessten. Alles
 # Neue gehoert zum Modul "Site Visit" und wird von uninstall-app dadurch
