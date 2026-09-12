@@ -75,7 +75,7 @@
   {
    "fieldname": "section_break_zeit",
    "fieldtype": "Section Break",
-   "label": "Zeitraum"
+   "label": "Duration"
   },
   {
    "fieldname": "employee",

@@ -32,8 +32,10 @@ site_visit/
         │   └── site_visit_photo/    # Kindtabelle für Fotos
         ├── print_format/
         │   └── site_visit_report/   # PDF-Vorlage
-        └── workspace/
-            └── site_visit/          # Desk-Seite der App
+        ├── workspace/
+        │   └── site_visits/         # Desk-Seite der App
+        └── translations/
+            └── de.csv               # Deutsche Übersetzungen
 ```
 
 Kein `install.py`: Es gibt keine Custom Fields auf Kern-Doctypes und keine
@@ -44,6 +46,27 @@ vollständig entfernt.
 Das Formular-Skript ist eine **Datei**, kein Client-Script-Datensatz. Es
 verschwindet restlos mit der App und unterliegt nicht dem
 Client-Script-Cache im Browser.
+
+## Sprache
+
+Die App ist auf Englisch geschrieben (Feldbezeichnungen, Meldungen,
+Druckvorlage) und liefert eine deutsche Übersetzung mit
+(`site_visit/translations/de.csv`). Das ist das normale Frappe-Verfahren:
+der englische Text im Code/in der Doctype-JSON bleibt die Quelle, die
+CSV-Datei übersetzt sie für Nutzer mit Sprache "Deutsch" (User → Language).
+Frappe wählt die Sprache automatisch passend zum jeweiligen Nutzer - keine
+Einstellung pro App nötig.
+
+Standardbegriffe, die bereits über Frappe/ERPNext selbst übersetzt sind
+(z. B. "Customer", "Employee", "Project", "Sales Order", "Timesheet"),
+sind bewusst **nicht** nochmal in `de.csv` enthalten, um keine
+widersprüchlichen Übersetzungen zu erzeugen. Übersetzt sind nur die für
+diese App eigenen Begriffe und Texte (z. B. "Site Visit" → "Kundeneinsatz",
+Fehlermeldungen, Druckvorlagen-Überschriften).
+
+Nach Änderungen an Texten im Code: neue/geänderte Strings auch in
+`de.csv` ergänzen, sonst bleiben sie auf Deutsch unübersetzt (Englisch als
+Fallback).
 
 ---
 

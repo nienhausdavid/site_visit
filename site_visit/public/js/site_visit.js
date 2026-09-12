@@ -57,7 +57,7 @@ frappe.ui.form.on('Site Visit', {
 	refresh(frm) {
 		frm.dashboard.clear_headline();
 		if (frm.doc.docstatus === 0 && !frm.doc.customer_signature) {
-			frm.dashboard.set_headline_alert('No customer signature captured yet.', 'orange');
+			frm.dashboard.set_headline_alert(__('No customer signature captured yet.'), 'orange');
 		}
 		if (frm.doc.docstatus === 1 && frm.doc.timesheet) {
 			frm.add_custom_button(__('Open Timesheet'), () => {
