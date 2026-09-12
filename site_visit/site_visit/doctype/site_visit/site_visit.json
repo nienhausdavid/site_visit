@@ -1,6 +1,6 @@
 {
  "actions": [],
- "autoname": "format:SV-.YYYY.-.#####",
+ "autoname": "SV-.YYYY.-.#####",
  "creation": "2026-09-13 09:00:00.000000",
  "default_print_format": "Site Visit Report",
  "doctype": "DocType",
