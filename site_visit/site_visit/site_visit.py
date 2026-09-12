@@ -80,19 +80,32 @@ def check_app_permission():
 
 
 def force_chrome_pdf():
-	"""Vor download_pdf/printview: erzwingt pdf_generator=chrome fuer Site
-	Visit. Normalerweise liest die App print_designer das pdf_generator-Feld
-	des Print Format aus und setzt es genau so vor dem eigentlichen Request -
+	"""Vor download_pdf/printview: erzwingt pdf_generator=chrome fuer alle
+	Doctypes auf diesem Server.
+
+	wkhtmltopdf (der Frappe-Standard) scheitert hier grundsaetzlich an jeder
+	frisch gerenderten Druckvorlage - schon das von Frappe selbst
+	eingebundene <link ...print.bundle...css> ist eine relative URL ohne
+	Basis-Adresse, die wkhtmltopdf im from_string-Modus nicht aufloesen kann
+	("ProtocolUnknownError"). Betroffen sind nicht nur Vorlagen mit Bildern:
+	am 13.09.2026 reproduziert fuer Sales Order, Sales Invoice und Site
+	Visit gleichermassen, per echtem HTTP-Request wie im Browser. Bereits
+	vorhandene PDFs (z. B. an alten Rechnungen) stammen vermutlich noch aus
+	der Frappe-Cloud-Migration und wurden nie auf diesem Server neu erzeugt
+	- deshalb ist es vorher nicht aufgefallen.
+
+	Normalerweise liest die App print_designer das pdf_generator-Feld des
+	Print Format aus und setzt es genau so vor dem eigentlichen Request -
 	print_designer ist auf diesem Server aber bewusst nicht installiert
-	(siehe hooks.py). Ohne diesen Hook faellt download_pdf hart auf
-	wkhtmltopdf zurueck, das an einem eingebetteten Base64-Bild (der
-	Kundenunterschrift) mit "ContentOperationNotPermittedError" scheitert."""
+	(kein version-16-Branch, Stabilitaetsbedenken laut INSTALL-APPS.md).
+	Statt der riskanten App nur den konkret benoetigten Mechanismus selbst
+	nachgebaut - hier bewusst ohne Doctype-Einschraenkung, weil der
+	zugrundeliegende wkhtmltopdf-Fehler alle Doctypes betrifft, nicht nur
+	Site Visit."""
 	request = getattr(frappe.local, "request", None)
 	if not request or request.path not in (
 		"/api/method/frappe.utils.print_format.download_pdf",
 		"/printview",
 	):
-		return
-	if frappe.request.args.get("doctype") != "Site Visit":
 		return
 	frappe.local.form_dict.pdf_generator = "chrome"

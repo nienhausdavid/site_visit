@@ -51,18 +51,26 @@ doc_events = {
 }
 
 # ---------------------------------------------------------------------------
-# PDF-Generator fuer Site Visit auf "chrome" erzwingen
+# PDF-Generator serverweit auf "chrome" erzwingen
+#
+# wkhtmltopdf (Frappe-Standard) scheitert auf diesem Server grundsaetzlich
+# an jeder frisch erzeugten Druckvorlage, nicht nur an Site Visit - schon
+# das von Frappe selbst eingebundene print.bundle.css (relative URL ohne
+# Basis-Adresse) bricht mit "ProtocolUnknownError" ab. Reproduziert am
+# 13.09.2026 fuer Sales Order, Sales Invoice und Site Visit gleichermassen.
+# Alte, bereits vorhandene Rechnungs-PDFs stammen vermutlich noch aus der
+# Frappe-Cloud-Migration und wurden nie auf diesem Server neu erzeugt -
+# deshalb ist es vorher nicht aufgefallen.
 #
 # frappe.utils.print_format.download_pdf ignoriert das pdf_generator-Feld
-# des Print Format komplett und faellt hart auf "wkhtmltopdf" zurueck - das
+# des Print Format und faellt hart auf "wkhtmltopdf" zurueck. Das
 # eigentliche Ausleseglied dafuer liefert normalerweise die App
-# print_designer (before_request-Hook), die auf diesem Server aber bewusst
-# nicht installiert ist (kein version-16-Branch, Stabilitaetsbedenken laut
-# INSTALL-APPS.md). Der Standard-Generator scheitert bei Site Visit an
-# einem eingebetteten Base64-Bild (Kundenunterschrift) mit
-# "ContentOperationNotPermittedError" - ein bekanntes wkhtmltopdf-Problem.
-# Statt der riskanten App nur den kleinen, konkret benoetigten Teil
-# selbst nachbauen, beschraenkt auf Site Visit.
+# print_designer (eigener before_request-Hook), die auf diesem Server aber
+# bewusst nicht installiert ist (kein version-16-Branch,
+# Stabilitaetsbedenken laut INSTALL-APPS.md). Statt der riskanten App nur
+# den konkret benoetigten Mechanismus selbst nachgebaut - siehe
+# force_chrome_pdf() in site_visit.py fuer Details. Liegt in dieser App,
+# wirkt aber (wie alle Hooks) serverweit fuer alle installierten Apps.
 # ---------------------------------------------------------------------------
 before_request = ["site_visit.site_visit.site_visit.force_chrome_pdf"]
 
