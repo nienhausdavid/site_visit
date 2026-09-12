@@ -26,16 +26,16 @@ site_visit/
     ├── public/
     │   ├── js/site_visit.js       # Feld-Defaults, Auftragsfilter, Link zum Zeitblatt
     │   └── images/site_visit-logo.svg
+    ├── translations/
+    │   └── de.csv               # Deutsche Übersetzungen (App-Ebene, nicht im Modulordner!)
     └── site_visit/           # Modulordner
         ├── doctype/
         │   ├── site_visit/          # Haupt-Doctype (submittable)
         │   └── site_visit_photo/    # Kindtabelle für Fotos
         ├── print_format/
         │   └── site_visit_report/   # PDF-Vorlage
-        ├── workspace/
-        │   └── site_visits/         # Desk-Seite der App
-        └── translations/
-            └── de.csv               # Deutsche Übersetzungen
+        └── workspace/
+            └── site_visits/         # Desk-Seite der App
 ```
 
 Kein `install.py`: Es gibt keine Custom Fields auf Kern-Doctypes und keine
