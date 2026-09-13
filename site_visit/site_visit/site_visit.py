@@ -32,9 +32,24 @@ def before_submit(doc, method=None):
 	wie das Buchen des Site Visit selbst. Serverseitig, damit kein zweiter
 	Request und damit kein Zeitfenster fuer "has been modified after you have
 	opened it" entsteht (gleiche Begruendung wie
-	zeit_projekt.zeit_projekt.sales_order.before_submit)."""
+	zeit_projekt.zeit_projekt.sales_order.before_submit).
+
+	customer/activity_type/sales_order/to_time sind absichtlich nicht mehr
+	reqd im Feld (siehe site_visit.json) - ein Entwurf mit nur laufendem
+	Timer (from_time gesetzt, "Start Timer" speichert sofort, siehe
+	site_visit.js) waere sonst gar nicht speicherbar. Deshalb hier explizit
+	vor dem Buchen geprueft."""
 	if doc.timesheet:
 		return
+
+	if not doc.customer:
+		frappe.throw(_("Please select a Customer before submitting."))
+	if not doc.activity_type:
+		frappe.throw(_("Please select an Activity Type before submitting."))
+	if not doc.sales_order:
+		frappe.throw(_("Please select a Sales Order before submitting."))
+	if not doc.to_time:
+		frappe.throw(_("Please enter an end time before submitting."))
 
 	if get_datetime(doc.to_time) <= get_datetime(doc.from_time):
 		frappe.throw(_("End time must be after the start time."))

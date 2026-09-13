@@ -27,7 +27,11 @@ frappe.ui.form.on('Site Visit', {
 					if (r.message && r.message.name) frm.set_value('employee', r.message.name);
 				});
 		}
-		if (!frm.doc.from_time) frm.set_value('from_time', frappe.datetime.now_datetime());
+		// Kein automatischer Default fuer from_time mehr - das uebernimmt
+		// jetzt der Timer (oder die manuelle Eingabe), siehe update_timer_toolbar
+		// unten. Ein Default hier wuerde bei Formularoeffnung den falschen
+		// Zeitpunkt festlegen, falls der Techniker den Einsatz erst spaeter
+		// tatsaechlich beginnt.
 
 		// Ueber die Verknuepfungen-Liste des Projekts angelegt ("+" bei Site
 		// Visit): project ist dann schon vorbelegt, aber das Feldevent
@@ -56,6 +60,7 @@ frappe.ui.form.on('Site Visit', {
 
 	refresh(frm) {
 		frm.dashboard.clear_headline();
+		update_timer_toolbar(frm);
 		if (frm.doc.docstatus === 0 && !frm.doc.customer_signature) {
 			frm.dashboard.set_headline_alert(__('No customer signature captured yet.'), 'orange');
 		}
@@ -69,6 +74,57 @@ frappe.ui.form.on('Site Visit', {
 		}
 	},
 });
+
+// Timer fuer die Einsatzzeit - reine Komfortfunktion obendrauf auf from_time/
+// to_time, die ganz normale, jederzeit von Hand editierbare Felder bleiben
+// (kein read-only). "Start"/"Stopp" speichern sofort (wie ERPNexts eigener
+// Timesheet-Timer in erpnext/public/js/projects/timer.js: frm.save() direkt
+// nach dem Setzen von from_time) - deshalb sind customer/company/
+// activity_type/sales_order/to_time nicht mehr reqd im Feld, sondern erst in
+// before_submit (site_visit.py) Pflicht, sonst waere ein Entwurf mit nur
+// laufendem Timer gar nicht speicherbar. Ohne das sofortige Speichern ginge
+// der Timer bei einem Reload/Schliessen der Seite verloren, weil ein neues,
+// ungespeichertes Dokument nur im Browser existiert. 1:1 uebernommen aus
+// fahrtenbuch.js (dort ausfuehrlicher kommentiert).
+function update_timer_toolbar(frm) {
+	stop_ticking(frm);
+	if (frm.doc.docstatus !== 0) return;
+
+	if (!frm.doc.from_time) {
+		frm.page.add_button(__('Start Timer'), () => {
+			frm.set_value('from_time', frappe.datetime.now_datetime()).then(() => frm.save());
+		});
+	} else if (!frm.doc.to_time) {
+		frm.page.add_button(__('Stop Timer'), () => {
+			frm.set_value('to_time', frappe.datetime.now_datetime()).then(() => frm.save());
+		});
+		start_ticking(frm);
+	}
+}
+
+function start_ticking(frm) {
+	const started_at = frappe.datetime.str_to_obj(frm.doc.from_time).getTime();
+	const tick = () => {
+		const total_seconds = Math.max(0, Math.floor((Date.now() - started_at) / 1000));
+		const h = String(Math.floor(total_seconds / 3600)).padStart(2, '0');
+		const m = String(Math.floor((total_seconds % 3600) / 60)).padStart(2, '0');
+		const s = String(total_seconds % 60).padStart(2, '0');
+		// clear_headline() zuerst: show_message() im Frappe-Layout haengt bei
+		// jedem Aufruf nur einen neuen Block an, statt den alten zu ersetzen -
+		// ohne das Clear stapeln sich die Meldungen im Sekundentakt.
+		frm.dashboard.clear_headline();
+		frm.dashboard.set_headline_alert(__('Timer running: {0}', [`${h}:${m}:${s}`]), 'orange');
+	};
+	tick();
+	frm.__site_visit_timer = setInterval(tick, 1000);
+}
+
+function stop_ticking(frm) {
+	if (frm.__site_visit_timer) {
+		clearInterval(frm.__site_visit_timer);
+		frm.__site_visit_timer = null;
+	}
+}
 
 // Betrag in der Zusatzartikel-Tabelle ist reine Anzeige (qty * rate) - der
 // verknuepfte Auftrag rechnet beim Uebernehmen selbst neu (Steuern,

@@ -187,6 +187,22 @@ berechnet). Da Techniker i. d. R. keine eigenen Sales-Order-Rechte haben,
 läuft das serverseitig kurzzeitig als Administrator — die eigentliche
 Berechtigungsprüfung ist die auf den Site Visit selbst.
 
+## Timer
+
+"Start Timer"/"Stop Timer" im Formular setzen nicht nur `from_time`/`to_time`,
+sondern **speichern sofort** — genau wie ERPNexts eigener Timesheet-Timer
+(`erpnext/public/js/projects/timer.js`, ruft nach dem Setzen von `from_time`
+ebenfalls direkt `frm.save()` auf) und wie die Schwester-App
+[`fahrtenbuch`](https://github.com/nienhausdavid/fahrtenbuch), die denselben
+Mechanismus nutzt. Ohne das sofortige Speichern ginge ein laufender Timer bei
+einem Reload oder Schliessen der Seite verloren, weil ein neues,
+ungespeichertes Dokument nur im Browser existiert.
+
+Damit ein Entwurf mit nur laufendem Timer überhaupt speicherbar ist, sind
+Kunde, Aktivitätsart, Auftrag und Endzeit **nicht mehr auf Feldebene
+Pflicht** — sie werden erst beim Buchen selbst geprüft (`before_submit` in
+`site_visit.py`), mit einer klaren Fehlermeldung, falls etwas fehlt.
+
 ## Automatische PDF-Erzeugung beim Buchen
 
 Die App liefert ein eigenes, gestaltetes Print Format **"Site Visit Report"**
