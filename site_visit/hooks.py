@@ -95,34 +95,7 @@ override_doctype_dashboards = {
 after_install = "site_visit.site_visit.install.after_install"
 before_uninstall = "site_visit.site_visit.install.before_uninstall"
 
-
-def _patch_pdf_on_submit_for_chrome():
-	"""pdf_on_submit.attach_pdf.get_pdf_data() ruft frappe.utils.pdf.get_pdf()
-	direkt auf - den rohen wkhtmltopdf-Pfad, ohne den pdf_generator-Mechanismus
-	von frappe.get_print() (siehe force_chrome_pdf oben fuer den Hintergrund:
-	wkhtmltopdf scheitert auf diesem Server grundsaetzlich). Betrifft damit
-	auch die automatische PDF-Anlage beim Buchen, die force_chrome_pdf nicht
-	abdeckt (kein HTTP-Request an download_pdf/printview, laeuft ggf. sogar in
-	einem Queue-Worker ganz ohne Request-Kontext).
-	pdf_on_submit ist ein Drittanbieter-Modul - hier gezielt nur die eine
-	Funktion ersetzt, statt es zu forken. Steht bewusst auf Modulebene in
-	hooks.py: das wird garantiert in jedem Prozesstyp (Web, Queue-Worker,
-	Scheduler) beim Start importiert, ein nur ueber doc_events/before_request
-	referenziertes Modul waere in reinen Queue-Workern u. U. nie geladen
-	worden, bevor der erste automatische PDF-Job dort laeuft."""
-	try:
-		from pdf_on_submit import attach_pdf
-	except ImportError:
-		return
-
-	import frappe
-
-	def get_pdf_data(doctype, name, print_format=None, letterhead=None):
-		return frappe.get_print(
-			doctype, name, print_format, letterhead=letterhead, as_pdf=True, pdf_generator="chrome"
-		)
-
-	attach_pdf.get_pdf_data = get_pdf_data
-
-
-_patch_pdf_on_submit_for_chrome()
+# Der pdf_on_submit-Patch fuer den automatischen PDF-Weg steht in
+# site_visit/__init__.py, nicht hier - siehe Kommentar dort fuer die
+# Begruendung (hooks.py wird nicht zuverlaessig in jedem Prozesstyp beim
+# Start importiert, das Paket-__init__.py dagegen schon).
