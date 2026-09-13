@@ -1,7 +1,30 @@
+import copy
+from contextlib import contextmanager
+
 import frappe
 from erpnext.projects.doctype.timesheet.timesheet import OverlapError
 from frappe import _
 from frappe.utils import get_datetime
+
+
+@contextmanager
+def _as_administrator():
+	"""Fuehrt den with-Block als Administrator aus - fuer Sales-Order-Schritte,
+	auf die der Techniker (Employee) i. d. R. keine eigenen Rechte hat. Die
+	eigentliche Berechtigungspruefung ist die auf den Site Visit selbst.
+
+	frappe.set_user() leert lokal u. a. local.form_dict komplett - ohne
+	Sicherung wuerde das den umgebenden Request (z. B. das Buchen des Site
+	Visit selbst, das nach diesem Hook weiterlaeuft) seiner eigenen Parameter
+	berauben. Deshalb hier explizit gesichert und danach wiederhergestellt."""
+	current_user = frappe.session.user
+	form_dict_backup = copy.deepcopy(frappe.local.form_dict)
+	frappe.set_user("Administrator")
+	try:
+		yield
+	finally:
+		frappe.set_user(current_user)
+		frappe.local.form_dict = form_dict_backup
 
 
 def before_submit(doc, method=None):
@@ -48,6 +71,78 @@ def before_submit(doc, method=None):
 		indicator="green",
 		alert=True,
 	)
+
+	_sync_extra_items_to_sales_order(doc)
+
+
+def _sync_extra_items_to_sales_order(doc):
+	"""Ungebuchte Zusatzartikel (Feld extra_items) in den verknuepften Auftrag
+	uebernehmen - im selben Request wie das Buchen, aus demselben Grund wie
+	die Timesheet-Erstellung oben. Bereits mit added_to_order=1 markierte
+	Zeilen wurden schon ueber create_sales_order() unten in einen neu
+	angelegten Auftrag aufgenommen und werden hier uebersprungen.
+
+	Nutzt erpnext.controllers.accounts_controller.update_child_qty_rate -
+	dieselbe Funktion, die auch der "Update Items"-Dialog im Auftrag selbst
+	verwendet - statt den Auftrag hier von Hand zu veraendern: das uebernimmt
+	auch bei bereits gebuchten Auftraegen korrekt Steuer-/Summenneuberechnung,
+	Kreditlimitpruefung usw."""
+	pending = [row for row in doc.extra_items if not row.added_to_order]
+	if not pending:
+		return
+
+	from erpnext.controllers.accounts_controller import update_child_qty_rate
+
+	so = frappe.get_doc("Sales Order", doc.sales_order)
+	trans_items = []
+	for row in so.items:
+		item = row.as_dict()
+		item["docname"] = row.name
+		trans_items.append(item)
+	for row in pending:
+		trans_items.append({"item_code": row.item_code, "qty": row.qty, "uom": row.uom, "rate": row.rate})
+
+	with _as_administrator():
+		update_child_qty_rate("Sales Order", frappe.as_json(trans_items), so.name)
+
+	for row in pending:
+		row.added_to_order = 1
+
+
+@frappe.whitelist()
+def create_sales_order(customer, company, po_no=None, project=None, items=None):
+	"""Fuer den "Neuer Auftrag"-Dialog im Site-Visit-Formular: legt einen
+	Auftrag (Entwurf) mit den bereits eingetragenen Zusatzartikeln an, wenn
+	fuer den Kunden noch keiner existiert. Laesst den Auftrag als Entwurf -
+	Buchen bleibt Sache des Vertriebs, nicht des Technikers vor Ort."""
+	if not frappe.has_permission("Site Visit", "write"):
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+
+	items = frappe.parse_json(items) if isinstance(items, str) else (items or [])
+	if not items:
+		frappe.throw(_("Add at least one item before creating a new Sales Order."))
+
+	so = frappe.new_doc("Sales Order")
+	so.customer = customer
+	so.company = company
+	so.project = project or None
+	so.po_no = po_no or None
+	for row in items:
+		so.append(
+			"items",
+			{
+				"item_code": row.get("item_code"),
+				"qty": row.get("qty") or 1,
+				"uom": row.get("uom"),
+				"rate": row.get("rate"),
+			},
+		)
+
+	with _as_administrator():
+		so.set_missing_values()
+		so.insert()
+
+	return so.name
 
 
 def on_cancel(doc, method=None):

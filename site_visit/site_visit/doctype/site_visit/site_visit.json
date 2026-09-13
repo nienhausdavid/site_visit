@@ -22,6 +22,8 @@
   "to_time",
   "section_break_description",
   "description",
+  "section_break_items",
+  "extra_items",
   "section_break_fotos",
   "photos",
   "section_break_unterschrift",
@@ -66,11 +68,12 @@
    "options": "Project"
   },
   {
-   "description": "Optional: Einsatz einem Auftrag zuordnen",
+   "description": "Pflichtfeld - darueber wird abgerechnet. Gibt es noch keinen, ueber \"+ Neuer Auftrag\" im Feld direkt anlegen.",
    "fieldname": "sales_order",
    "fieldtype": "Link",
    "label": "Sales Order",
-   "options": "Sales Order"
+   "options": "Sales Order",
+   "reqd": 1
   },
   {
    "fieldname": "section_break_zeit",
@@ -133,6 +136,18 @@
    "fieldname": "description",
    "fieldtype": "Small Text",
    "label": "Description"
+  },
+  {
+   "description": "Vor Ort zusaetzlich benoetigtes Material (z. B. Adapter, Kabel) - wird beim Buchen in den verknuepften Auftrag uebernommen.",
+   "fieldname": "section_break_items",
+   "fieldtype": "Section Break",
+   "label": "Additional Items"
+  },
+  {
+   "fieldname": "extra_items",
+   "fieldtype": "Table",
+   "label": "Additional Items",
+   "options": "Site Visit Item"
   },
   {
    "fieldname": "section_break_fotos",

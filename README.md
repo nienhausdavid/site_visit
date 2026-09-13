@@ -8,6 +8,12 @@ Fotos, optional die Unterschrift des Kunden direkt auf dem eigenen Gerät. Beim
 Buchen (Submit) wird automatisch ein **Timesheet** angelegt, gebucht und
 verknüpft — bereit zur Abrechnung.
 
+Ein **Auftrag** ist Pflicht, da darüber abgerechnet wird — gibt es noch
+keinen, lässt er sich direkt aus dem Site Visit heraus anlegen (siehe
+"Auftrag" unten). Wird vor Ort zusätzliches Material gebraucht (z. B. ein
+USB-auf-LAN-Adapter), lässt sich das unter "Additional Items" erfassen und
+wandert beim Buchen automatisch in die Auftragspositionen.
+
 ---
 
 ## Aufbau
@@ -19,28 +25,35 @@ site_visit/
 ├── README.md
 └── site_visit/
     ├── __init__.py           # Versionsnummer
-    ├── hooks.py              # doctype_js + doc_events
-    ├── site_visit.py         # before_submit/on_cancel/check_app_permission
+    ├── hooks.py              # doctype_js + doc_events + pdf_on_submit-Patch
+    ├── install.py            # after_install/before_uninstall (nur PDF on Submit Settings)
+    ├── site_visit.py         # before_submit/on_cancel/create_sales_order/...
+    ├── project_dashboard.py  # ergaenzt "Site Visit" in den Projekt-Verknuepfungen
     ├── modules.txt           # Modulname "Site Visit"
     ├── patches.txt
     ├── public/
-    │   ├── js/site_visit.js       # Feld-Defaults, Auftragsfilter, Link zum Zeitblatt
+    │   ├── js/site_visit.js       # Feld-Defaults, Auftragsfilter, Neuer-Auftrag-Dialog
     │   └── images/site_visit-logo.svg
     ├── translations/
     │   └── de.csv               # Deutsche Übersetzungen (App-Ebene, nicht im Modulordner!)
+    ├── workspace_sidebar/
+    │   └── site_visits.json     # Eigene Sidebar (nur Site Visit + Timesheet, kein Home-Link)
     └── site_visit/           # Modulordner
         ├── doctype/
         │   ├── site_visit/          # Haupt-Doctype (submittable)
-        │   └── site_visit_photo/    # Kindtabelle für Fotos
+        │   ├── site_visit_photo/    # Kindtabelle für Fotos
+        │   └── site_visit_item/     # Kindtabelle fuer Zusatzartikel
         ├── print_format/
         │   └── site_visit_report/   # PDF-Vorlage
         └── workspace/
             └── site_visits/         # Desk-Seite der App
 ```
 
-Kein `install.py`: Es gibt keine Custom Fields auf Kern-Doctypes und keine
-sonstigen Datensätze, die manuell aufgeräumt werden müssten — alles gehört
-zum Modul "Site Visit" und wird von `uninstall-app` dadurch bereits
+`install.py` legt **keine** Custom Fields oder sonstigen Datensätze auf
+Kern-Doctypes an — der einzige Zweck ist der optionale Eintrag in
+`PDF on Submit Settings` (siehe "Automatische PDF-Erzeugung" unten), und
+auch der nur, wenn `pdf_on_submit` installiert ist. Alles andere gehört
+weiterhin zum Modul "Site Visit" und wird von `uninstall-app` bereits
 vollständig entfernt.
 
 Das Formular-Skript ist eine **Datei**, kein Client-Script-Datensatz. Es
@@ -109,9 +122,11 @@ bench --site <deine-site> uninstall-app site_visit
 
 **Was dabei entfernt wird:**
 
-- die Doctype "Site Visit" und die Kindtabelle "Site Visit Photo"
+- die Doctype "Site Visit" und die Kindtabellen "Site Visit Photo"/"Site Visit Item"
 - das Modul „Site Visit" und alles, was daran hängt
 - das Formular-Skript, da es reiner Code ist
+- die Zeile `Site Visit` in `PDF on Submit Settings` (nur falls `pdf_on_submit`
+  installiert ist — `before_uninstall` räumt sie mit auf)
 
 **Was bewusst bestehen bleibt:**
 
@@ -122,6 +137,8 @@ bench --site <deine-site> uninstall-app site_visit
   Site Visit später storniert würde
 - bereits fakturierte Timesheets — ein Site Visit mit fakturiertem Timesheet
   lässt sich nicht mehr stornieren (siehe `on_cancel` in `site_visit.py`)
+- bereits in Aufträge übernommene Zusatzartikel (die Auftragspositionen
+  selbst gehören nicht zu dieser App)
 
 ---
 
@@ -144,6 +161,32 @@ registriert sich über `add_to_apps_screen`/`app_logo_url` in `hooks.py` als
 eigene Kachel auf der Apps-Übersicht (`/apps`), inklusive einer eigenen
 Workspace mit Verknüpfungen zu "Site Visit" und "Timesheet".
 
+## Auftrag
+
+`sales_order` ist Pflichtfeld — jeder Einsatz muss einem Auftrag zugeordnet
+sein, da darüber (und über das automatisch erzeugte Timesheet) abgerechnet
+wird. Gibt es noch keinen passenden Auftrag, öffnet der Button **"New Sales
+Order"** im Formular (sichtbar, solange kein Auftrag verknüpft ist) einen
+Dialog: Kunde/Firma/Projekt kommen vom Site Visit, dazu lässt sich die
+**Kundenreferenz** (Feld `po_no`, wie beim normalen Anlegen eines Auftrags)
+eintragen. Der neue Auftrag entsteht als **Entwurf** — Buchen bleibt Sache
+des Vertriebs, nicht des Technikers vor Ort — und übernimmt die bereits
+eingetragenen Zusatzartikel (siehe unten) als Startpositionen; dafür muss
+mindestens eine Zeile in "Additional Items" stehen, da ein Auftrag ohne
+Position nicht anlegbar ist.
+
+**Zusätzliche Artikel** (`extra_items`): vor Ort zusätzlich benötigtes
+Material (z. B. ein USB-auf-LAN-Adapter), das noch nicht im Auftrag steht.
+Beim Buchen des Site Visit werden neue (noch nicht übernommene) Zeilen
+automatisch in die Positionen des verknüpften Auftrags aufgenommen — auch
+wenn der Auftrag bereits gebucht ist (über
+`erpnext.controllers.accounts_controller.update_child_qty_rate`, dieselbe
+Funktion, die auch der "Update Items"-Dialog im Auftrag selbst verwendet;
+bestehende Positionen, Steuern und Summen werden dabei korrekt neu
+berechnet). Da Techniker i. d. R. keine eigenen Sales-Order-Rechte haben,
+läuft das serverseitig kurzzeitig als Administrator — die eigentliche
+Berechtigungsprüfung ist die auf den Site Visit selbst.
+
 ## Automatische PDF-Erzeugung beim Buchen
 
 Die App liefert ein eigenes, gestaltetes Print Format **"Site Visit Report"**
@@ -154,13 +197,20 @@ PDF-Automatisierungsmechanismus wie die App
 [`pdf_on_submit`](https://github.com/alyf-de/erpnext_pdf-on-submit) (bewusst
 keine harte Abhängigkeit, `site_visit` funktioniert auch ohne).
 
-Ist `pdf_on_submit` installiert, einmalig einrichten:
+Ist `pdf_on_submit` zum Zeitpunkt der Installation bereits vorhanden, trägt
+`install.py` automatisch die Zeile `Site Visit` / `Site Visit Report` in
+dessen **PDF on Submit Settings** ein — kein manueller Schritt nötig. Wird
+`pdf_on_submit` erst später installiert, einmalig von Hand nachtragen (die
+gleiche Zeile in *Enabled For*) oder `bench execute
+site_visit.install.after_install` erneut laufen lassen.
 
-1. **PDF on Submit Settings** öffnen
-2. Zeile in *Enabled For* hinzufügen: Document Type `Site Visit`,
-   Print Format `Site Visit Report`
-3. Speichern — ab dann wird bei jedem gebuchten Site Visit automatisch ein
-   PDF erzeugt und angehängt
+`hooks.py` patcht zusätzlich `pdf_on_submit.attach_pdf.get_pdf_data()`, damit
+die automatische PDF-Erzeugung über `frappe.get_print(..., pdf_generator=
+"chrome")` läuft statt über deren eigenen, direkten wkhtmltopdf-Aufruf — auf
+Servern, auf denen wkhtmltopdf grundsätzlich fehlschlägt (siehe
+`force_chrome_pdf` weiter oben), würde die automatische PDF-Anlage sonst im
+Hintergrund lautlos scheitern. Der Patch greift nur, wenn `pdf_on_submit`
+tatsächlich installiert ist (`try`/`except ImportError`).
 
 Ohne `pdf_on_submit` (oder eine ähnliche App) bleibt das Print Format
 manuell nutzbar (Drucken/PDF-Button im Formular), nur eben nicht automatisch.
