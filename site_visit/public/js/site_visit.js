@@ -6,11 +6,18 @@
 
 frappe.ui.form.on('Site Visit', {
 	onload(frm) {
-		// Auftrag-Auswahl auf Auftraege des gewaehlten Projekts einschraenken.
-		// Dynamischer Filter - wird bei jedem Oeffnen des Dropdowns neu anhand
-		// des aktuellen frm.doc.project ausgewertet.
+		// Auftrag-Auswahl auf Auftraege des gewaehlten Kunden (und, falls
+		// gesetzt, Projekts) einschraenken. Dynamischer Filter - wird bei
+		// jedem Oeffnen des Dropdowns neu anhand des aktuellen frm.doc
+		// ausgewertet. Ohne customer-Filter wurden hier bislang Auftraege
+		// beliebiger Kunden angezeigt, sobald kein Projekt gesetzt war (oder
+		// generell, da der Filter selbst bei gesetztem Projekt nie auf den
+		// Kunden eingeschraenkt hat).
 		frm.set_query('sales_order', () => {
-			return frm.doc.project ? { filters: { project: frm.doc.project } } : {};
+			const filters = {};
+			if (frm.doc.customer) filters.customer = frm.doc.customer;
+			if (frm.doc.project) filters.project = frm.doc.project;
+			return { filters };
 		});
 
 		if (!frm.is_new()) return;
